@@ -5,6 +5,14 @@ import { ContentModel, LinkModel, UserModel } from "./db";
 import { JWT_PASSWORD } from "./config";
 import { userMiddleware } from "./middleware";
 import cors from "cors";
+import { GoogleGenAI } from "@google/genai";
+import dotenv from "dotenv";
+dotenv.config();
+
+if (!process.env.GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY is not defined in the environment variables");
+}
+const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const app = express();
 app.use(express.json());
@@ -169,5 +177,27 @@ app.get("/api/v1/brain/:shareLink", async (req, res) => {
     })
 
 })
+
+
+app.post("/api/v1/gemini/ask", userMiddleware, async (req, res) => {
+    const prompt = req.body.prompt;
+    console.log("🔥 Gemini prompt received:", prompt);
+  
+    try {
+      const result = await genAI.models.generateContent({
+        model: "gemini-1.5-pro", // or "gemini-1.0-pro" / "gemini-pro"
+        contents: [{ role: "user", parts: [{ text: prompt }] }]
+      });
+  
+      const text = result.text;
+      console.log("✅ Gemini responded:", text);
+      res.json({ text });
+    } catch (err) {
+      console.error("❌ Error from Gemini API:", err);
+      res.status(500).json({ message: "Gemini API call failed" });
+    }
+  });
+  
+
 
 app.listen(3000);
